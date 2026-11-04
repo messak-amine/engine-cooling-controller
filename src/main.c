@@ -39,7 +39,7 @@ static const char *sensor_status_label(int16_t temp_c, bool sensor_ok)
     return "OK";
 }
 
-int main(int argc, char *const argv[])
+int main(int argc, const char *const argv[])
 {
     FILE *csv = NULL;
 
