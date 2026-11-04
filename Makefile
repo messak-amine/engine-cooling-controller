@@ -29,3 +29,9 @@ test: $(TST_BIN)
 
 clean:
 > rm -f $(SIM_BIN) $(TST_BIN) *.exe *.o *.obj *.gcda *.gcno *.gcov
+
+# Export the deterministic C simulation as data for MATLAB.
+.PHONY: trace
+trace: $(SIM_BIN)
+> mkdir -p results
+> ./$(SIM_BIN) --csv results/cooling_trace.csv
