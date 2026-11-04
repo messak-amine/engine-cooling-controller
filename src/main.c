@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "cooling_controller.h"
 
 typedef struct {
@@ -30,7 +31,22 @@ static const char *sensor_status_label(int16_t temp_c, bool sensor_ok) {
     return "OK";
 }
 
-int main(void) {
+int main(int argc, char *argv[]) {
+    FILE *csv = NULL;
+    if (argc != 1) {
+        if (argc != 3 || strcmp(argv[1], "--csv") != 0) {
+            fprintf(stderr, "Usage: %s [--csv output_file.csv]\n", argv[0]);
+            return 1;
+        }
+        csv = fopen(argv[2], "w");
+        if (csv == NULL) {
+            perror("Could not open CSV output file");
+            return 1;
+        }
+        fprintf(csv, "step,heat_rate_c_per_step,plant_temp_c,measured_temp_c,"
+                     "signal_valid,fan_state,pwm_pct,sensor_fault,fault_led,valid_streak\n");
+    }
+
     CoolingConfig config = {
         .low_on_c = 100,
         .low_off_c = 95,
@@ -48,9 +64,14 @@ int main(void) {
     CoolingController controller;
     if (cooling_init(&controller, &config) != COOLING_OK) {
         fprintf(stderr, "Failed to initialize controller\n");
+        if (csv != NULL) { fclose(csv); }
         return 1;
     }
-    cooling_set_hal(&controller, &hal);
+    if (cooling_set_hal(&controller, &hal) != COOLING_OK) {
+        fprintf(stderr, "Failed to install HAL callbacks\n");
+        if (csv != NULL) { fclose(csv); }
+        return 1;
+    }
 
     double plant_temp_c = 88.0;
     printf("Step | Load (C/s) | Temp (C) | Sensor  | Fan State | PWM  | Fault LED\n");
@@ -90,9 +111,30 @@ int main(void) {
                measured_temp,
                sensor_status_label(measured_temp, sensor_ok),
                cooling_state_name(state),
-               hw_state.pwm_duty_pct,
+               (unsigned int)hw_state.pwm_duty_pct,
                hw_state.fault_led_on ? "ON" : "OFF");
+
+        if (csv != NULL) {
+            if (fprintf(csv, "%d,%.2f,%.2f,%d,%d,%d,%u,%d,%d,%u\n",
+                        step, heat_rate, plant_temp_c, (int)measured_temp,
+                        sensor_ok ? 1 : 0, (int)state,
+                        (unsigned int)hw_state.pwm_duty_pct,
+                        controller.sensor_fault ? 1 : 0,
+                        hw_state.fault_led_on ? 1 : 0,
+                        (unsigned int)controller.valid_streak) < 0) {
+                perror("Could not write CSV trace");
+                fclose(csv);
+                return 1;
+            }
+        }
     }
 
+    if (csv != NULL) {
+        if (fclose(csv) != 0) {
+            perror("Could not close CSV trace");
+            return 1;
+        }
+        printf("CSV trace written to %s\n", argv[2]);
+    }
     return 0;
 }

@@ -94,6 +94,36 @@ A new invalid reading during recovery restarts the counter. The HIGH fallback is
 
 The simulation prints the step, heating rate, measured temperature, sensor status, fan state, PWM command, and fault indicator. The thermal model is intentionally simple; it is not a physically calibrated engine model.
 
+## MATLAB-based validation (R2024a)
+
+The C simulation can export a 20-step trace for independent checking and
+visualization in MATLAB. The C controller is unchanged; MATLAB serves as an
+offline reference model, not as an ECU runtime component.
+
+1. From **Git Bash** at the repository root, run `make trace`. This generates
+   `results/cooling_trace.csv` (ignored by Git).
+2. In **MATLAB**, change to the repository folder and run:
+
+   ```matlab
+   addpath('matlab')
+   analyze_cooling
+   ```
+
+The MATLAB script reads the CSV, calculates a separate FSM/fault-recovery
+reference, checks every recorded state and output, and saves a four-panel
+figure to `results/cooling_analysis.png`. MATLAB R2024a is supported; no
+Simulink or other add-on is required for this workflow.
+
+The reference model checks the supplied 20-step test scenario, not all
+possible input sequences. This is **offline cross-checking**, not real-time
+co-simulation, hardware-in-the-loop testing, or functional-safety evidence.
+
+### MATLAB validation results
+
+The following plots show temperature evolution, injected sensor faults, PWM commands, and fault recovery.
+
+![Engine Cooling Controller - MATLAB Validation](docs/cooling_analysis.png)
+
 ## Project structure
 
 ```text
@@ -165,7 +195,3 @@ This is a **PC-based educational simulation**, not a production-ready ECU implem
 - Calls to `cooling_update()` are simulated steps, not a real-time scheduler with timing guarantees.
 - No CAN communication, diagnostics protocol, or physical fan-failure monitoring is implemented.
 - The project does not implement or claim AUTOSAR or ISO 26262 compliance.
-
-## License
-
-MIT — see [LICENSE](LICENSE).

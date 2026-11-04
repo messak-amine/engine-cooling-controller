@@ -12,3 +12,6 @@ cooling_tests
 
 # Editor folders
 .vscode/
+
+# MATLAB analysis outputs (regenerated locally)
+results/
